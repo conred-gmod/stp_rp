@@ -1,0 +1,113 @@
+// Везде есть неявная переменная Type: string
+
+PlayerManager [singleton]
+	// implicit networking
+	Players: table(steamid: string, Player) [get, set, database_table]
+	
+Player
+	[networkable]
+	[database_storable]
+	[recip_fn(<Если игрок - активный, то всем, иначе ??>)]
+	
+	IsActive: bool [get, set, network]
+	SteamId: string [get, set, network, database]
+	
+	EnginePlayer: Entity|nil [get, set, network]
+
+	??
+	
+CharacterManager [singleton]
+	// implicit networking
+	Chars: table(id: .DbId, Character) [get, set, database_table]
+	
+Character
+	[networkable]
+	[database_storable]
+	[track_dbid]
+	[recip_fn(<Если персонаж - активный, то всем, иначе ??>)]
+	
+	IsActive: bool [get, set, network]
+	Owner: Player|nil [get, set, network, database(<Owner.SteamId>)]
+	
+	Pawn: Pawn [get, set, network, database]
+	
+
+
+PawnManager [singleton]
+	// implicit networking
+	Pawns: table(id: .DbId, Pawn) [get, set, database_table]
+	
+<Pawn>
+	[networkable]
+	[database_storable]
+	[track_dbid]
+	[database_store_type]
+	
+	
+	Inventories abstract: array(Inventory) [get, database]
+	- [network(<через механизм инвентарей>)]
+	
+	AwareChars: array(Character) [get, set, database]
+	Name: string [get, set, database, network(<тем, кто знает игрока>)]
+	VisualDesc: string [get, set, database, network]
+	
+EntityVisual
+	[networkable]
+	[database_storable]
+	
+	Model: string [get, set, networkable, database]
+	Skin: uint [get, set, networkable, database]
+	Bodygroups: array(uint) [get, set, networkable, database]
+	
+HumanPawn
+	[Pawn]
+	
+	Entity: Entity
+	Visual: EntityVisual [get, set, database, networkable]
+	
+	InventoryLeftHand: Inventory [get, set, add_to(Inventories)]
+	InventoryRightHand: Inventory [get, set, add_to(Inventories)]
+	
+	InventoryHead: Inventory [get, set, add_to(Inventories)]
+	InventoryBody: Inventory [get, set, add_to(Inventories)]
+	InventoryBack: Inventory [get, set, add_to(Inventories)]
+	InventoryBelt: Inventory [get, set, add_to(Inventories)]
+	
+
+ItemManager [singleton]
+	// implicit networking
+	Items: table(id: .DbId, Item) [get, set, database_table]
+	// also implicit networking
+	Inventories: table(id: .DbId, Inventory) [get, set, database_table]
+	
+<Item>
+	[networkable(<Туда, куда Owner; наблюдателям сущности>)]
+	[track_dbid]
+	[database_store_type]
+	
+	Owner: Inventory|nil [get, set, network]
+	
+	InvPosition: { x: nint16, y: nint16, direction: UP|RIGHT|DOWN|LEFT } | nil [get, set, network, database]
+
+	Mass abstract: float [get, set]	
+	
+	InvRender abstract: fn(?) -> ?
+	
+Inventory
+	[networkable] // Ограничивается по NetParent
+	[track_dbid]
+	
+	Items: table(.DbId, Item)
+	
+<ItemStorage>
+	[Item]
+	
+	Storage: Inventory [get, set, network, database]
+	
+	
+ItemProp
+	[Inventory]
+	Mass: float [network, database]
+	
+	InvRender: fn(?) -> ?
+	Visual: EntityVisual [get, set, network, database]
